@@ -5,20 +5,22 @@ import QtQml 2.0
 QtObject {
 
     // numeric properties
-    property int rotationAngle: 90
-    property int applicationWidth: 480
-    property int applicationHeight: 640
-    property real objectScale: 0.9
+    property int applicationWidth: 700
+    property int applicationHeight: 600
+    property int radius: 80
 
 
     //colors
     property color transparent: "transparent"
-    property color textColor: "midnightblue"
-    property color appBackgroundColor: "white"
-    property color abtCircleColor: "red"
-    property color emvCircleColor: "blue"
-    property color madtCircleColor: "yellow"
-    property color devManagerCircleColor: "green"
+    property color textColor: "black"
+    property color borderColor: "black"
+    property color selectedCellColor: "white"
+    property color wrongColor: "#d80073"
+    property color completedColor: "gray"
+    property color finishedColor: "green"
+
+    property color boardFirstColor: "#dae8fc"
+    property color boardSecondColor: "#ffe6cc"
 
     //fonts
     property string applicationFont: "akkuratRegular"

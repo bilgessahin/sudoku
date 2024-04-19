@@ -6,5 +6,7 @@
         <file>fonts/Roboto-Medium.ttf</file>
         <file>fonts/Roboto-Regular.ttf</file>
         <file>qml/Style.qml</file>
+        <file>qml/Functions.qml</file>
+        <file>qml/SudokuBoard.qml</file>
     </qresource>
 </RCC>

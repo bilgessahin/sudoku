@@ -8,6 +8,7 @@ CONFIG += c++11
 INCLUDEPATH += include
 
 SOURCES += \
+        src/SudokuController.cpp \
         src/SudokuModel.cpp \
         src/main.cpp
 
@@ -28,4 +29,5 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 #    qrc/qml/main.qml
 
 HEADERS += \
+    include/SudokuController.h \
     include/SudokuModel.h

@@ -1,70 +1,189 @@
-#include <QDebug>
-#include <SudokuModel.h>
+#include "SudokuModel.h"
+#include <QDateTime>
+#include <QSet>
 
-SudokuModel::SudokuModel(QObject *parent) : QObject(parent)
+SudokuModel::SudokuModel(QObject *parent) : QAbstractListModel(parent), numbers(81, 0), fixed(81, false)
 {
-  // Sudoku modelini başlat
-  m_sudokuGrid = QVector<QVector<int>>(9, QVector<int>(9, 0));
+  generateNumbers();
 }
 
-void SudokuModel::generateSudoku()
+int SudokuModel::rowCount(const QModelIndex &parent) const
 {
-  // Sudoku tablosunu oluştur
-  solveSudoku();
-
-  // Oluşturulan Sudoku tablosunu yayınla
-  emit sudokuGenerated();
+  return 81;
 }
 
-QVector<QVector<int>> SudokuModel::getSudokuGrid() const
+QVariant SudokuModel::data(const QModelIndex &index, int role) const
 {
-  return m_sudokuGrid;
+  int row = index.row();
+  if (role == NumberRole)
+    return numbers[row];
+  if (role == FixedRole)
+    return fixed[row];
+  return QVariant();
 }
 
-bool SudokuModel::isValidPlacement(int row, int col, int num)
+QHash<int, QByteArray> SudokuModel::roleNames() const
 {
-  // Satırı kontrol et
-  for (int i = 0; i < 9; ++i)
-    if (m_sudokuGrid[row][i] == num)
-      return false;
-
-  // Sütunu kontrol et
-  for (int i = 0; i < 9; ++i)
-    if (m_sudokuGrid[i][col] == num)
-      return false;
-
-  // Küçük 3x3 kutuyu kontrol et
-  int startRow = row - row % 3;
-  int startCol = col - col % 3;
-  for (int i = 0; i < 3; ++i)
-    for (int j = 0; j < 3; ++j)
-      if (m_sudokuGrid[i + startRow][j + startCol] == num)
-        return false;
-
-  return true;
+  QHash<int, QByteArray> roles;
+  roles[NumberRole] = "number";
+  roles[FixedRole] = "fixed";
+  return roles;
 }
 
-bool SudokuModel::solveSudoku()
+void SudokuModel::generateNumbers()
 {
-  for (int row = 0; row < 9; ++row)
+  clearBoard();
+  fillBoard(0);
+  removeCells(40);
+  emit dataChanged(index(0, 0), index(80, 0), {NumberRole, FixedRole});
+}
+
+void SudokuModel::clearBoard()
+{
+  for (int i = 0; i < 81; ++i)
   {
-    for (int col = 0; col < 9; ++col)
+    numbers[i] = 0;
+    fixed[i] = false;
+  }
+}
+
+void SudokuModel::removeCells(double percentage)
+{
+  int totalCells = 81;
+  int cellsToRemove = static_cast<int>(totalCells * percentage / 100.0);
+  QRandomGenerator *generator = QRandomGenerator::global();
+
+  while (cellsToRemove > 0)
+  {
+    int cellIndex = generator->bounded(0, totalCells);
+    if (numbers[cellIndex] != 0)
     {
-      if (m_sudokuGrid[row][col] == 0)
+      numbers[cellIndex] = 0;
+      fixed[cellIndex] = false;
+      cellsToRemove--;
+    }
+  }
+}
+
+bool SudokuModel::fillBoard(int index)
+{
+  if (index >= 81)
+  {
+    return true;
+  }
+
+  int row = index / 9;
+  int col = index % 9;
+
+  QVector<int> availableNumbers{1, 2, 3, 4, 5, 6, 7, 8, 9};
+  QRandomGenerator *generator = QRandomGenerator::global();
+  std::shuffle(availableNumbers.begin(), availableNumbers.end(), *generator);
+
+  for (int num : availableNumbers)
+  {
+    if (isSafe(row, col, num))
+    {
+      numbers[index] = num;
+      fixed[index] = true;
+
+      if (fillBoard(index + 1))
       {
-        for (int num = 1; num <= 9; ++num)
-        {
-          if (isValidPlacement(row, col, num))
-          {
-            m_sudokuGrid[row][col] = num;
-            if (solveSudoku())
-              return true;
-            m_sudokuGrid[row][col] = 0;
-          }
-        }
-        return false;
+        return true;
+      }
+
+      numbers[index] = 0;
+      fixed[index] = false;
+    }
+  }
+
+  return false;
+}
+
+bool SudokuModel::isSafe(int row, int col, int number) const
+{
+  int boxStartRow = row - row % 3;
+  int boxStartCol = col - col % 3;
+
+  return !isInRow(row, number) && !isInColumn(col, number) && !isInBox(boxStartRow, boxStartCol, number);
+}
+
+bool SudokuModel::isInRow(int row, int number) const
+{
+  for (int col = 0; col < 9; ++col)
+  {
+    if (numbers[row * 9 + col] == number)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool SudokuModel::isInBox(int startRow, int startCol, int number) const
+{
+  for (int i = 0; i < 3; ++i)
+  {
+    for (int j = 0; j < 3; ++j)
+    {
+      if (numbers[(startRow + i) * 9 + (startCol + j)] == number)
+      {
+        return true;
       }
     }
   }
+  return false;
+}
+
+bool SudokuModel::isInColumn(int col, int number) const
+{
+  for (int row = 0; row < 9; ++row)
+  {
+    if (numbers[row * 9 + col] == number)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool SudokuModel::setData(const QModelIndex &index, const QVariant &value, int role)
+{
+  if (index.row() < 0 || index.row() >= numbers.size() || role != NumberRole)
+    return false;
+  numbers[index.row()] = value.toInt();
+  emit dataChanged(index, index, {role});
   return true;
+}
+
+int SudokuModel::numberRole() const
+{
+  return NumberRole;
+}
+
+bool SudokuModel::isRowComplete(int row) const
+{
+
+  QSet<int> existNum;
+  for (int col = 0; col < 9; ++col)
+  {
+    int value = numbers[row * 9 + col];
+    if (value == 0 || existNum.contains(value))
+      return false;
+    existNum.insert(value);
+  }
+  return existNum.size() == 9;
+}
+
+bool SudokuModel::isColumnComplete(int col) const
+{
+
+  QSet<int> existNum;
+  for (int row = 0; row < 9; ++row)
+  {
+    int value = numbers[row * 9 + col];
+    if (value == 0 || existNum.contains(value))
+      return false;
+    existNum.insert(value);
+  }
+  return existNum.size() == 9;
 }
